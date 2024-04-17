@@ -184,20 +184,20 @@ public class NeptuneSparqlClient implements AutoCloseable {
 
         org.apache.http.HttpResponse response = httpClient.execute(request);
         InputStream responseBody = response.getEntity().getContent();
-
         RDFParser rdfParser = Rio.createParser(RDFFormat.NTRIPLES);
-        OutputWriter outputWriter = targetConfig.createOutputWriter();
-        RDFWriter writer = targetConfig.createRDFWriter(outputWriter, featureToggles);
-        rdfParser.setRDFHandler(writer);
 
-        try {
-            rdfParser.parse(responseBody);
+        try (OutputWriter outputWriter = targetConfig.createOutputWriter()) {
+            RDFWriter writer = targetConfig.createRDFWriter(outputWriter, featureToggles);
+            rdfParser.setRDFHandler(writer);
+
+            try {
+                rdfParser.parse(responseBody);
+            } finally {
+                responseBody.close();
+            }
         }
-        catch (IOException e) {
-            throw e;
-        }
-        finally {
-            responseBody.close();
+        catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
