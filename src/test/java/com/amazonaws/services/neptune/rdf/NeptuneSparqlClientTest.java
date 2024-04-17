@@ -15,24 +15,31 @@ package com.amazonaws.services.neptune.rdf;
 import com.amazonaws.services.neptune.cluster.ConnectionConfig;
 import com.amazonaws.services.neptune.export.FeatureToggle;
 import com.amazonaws.services.neptune.export.FeatureToggles;
+import com.amazonaws.services.neptune.io.OutputWriter;
 import com.amazonaws.services.neptune.io.PrintOutputWriter;
 import com.amazonaws.services.neptune.rdf.io.RdfExportFormat;
 import com.amazonaws.services.neptune.rdf.io.RdfTargetConfig;
+import org.apache.http.ProtocolVersion;
+import org.apache.http.client.HttpClient;
+import org.apache.http.entity.BasicHttpEntity;
+import org.apache.http.message.BasicHttpResponse;
 import org.eclipse.rdf4j.repository.sail.SailRepository;
 import org.eclipse.rdf4j.repository.sparql.SPARQLRepository;
 import org.eclipse.rdf4j.sail.memory.MemoryStore;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.util.Arrays;
+import java.util.Collections;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -49,6 +56,8 @@ public class NeptuneSparqlClientTest {
             "<http://aws.amazon.com/neptune/csv2rdf/resource/0> <http://aws.amazon.com/neptune/csv2rdf/datatypeProperty/code> \"0.77\" .\n" +
             "<http://aws.amazon.com/neptune/csv2rdf/resource/0> <http://aws.amazon.com/neptune/csv2rdf/datatypeProperty/desc> \"Version: 0.77 Generated: 2017-10-06 16:24:52 UTC\\nGraph created by Kelvin R. Lawrence\\nPlease let me know of any errors you find in the graph.\" .\n";
 
+    private OutputWriter writer;
+
     @Before
     public void setup() throws IOException {
         // init a mock SPARQLRepository which is backed by a SailRepository containing test data.
@@ -56,13 +65,21 @@ public class NeptuneSparqlClientTest {
         sailRepository.getConnection().add(new File("src/test/resources/IntegrationTest/testExportRdfVersionNamedGraph/statements/statements.ttl"));
         mockSPARQLRepository = mock(SPARQLRepository.class);
 
+        HttpClient mockHttpClient = mock(HttpClient.class);
+        BasicHttpResponse response = new BasicHttpResponse(new ProtocolVersion("HTTP", 1, 1), 200, "Success");
+        BasicHttpEntity httpEntity = new BasicHttpEntity();
+        httpEntity.setContent(new ByteArrayInputStream(new byte[]{}));
+        response.setEntity(httpEntity);
+        doReturn(response).when(mockHttpClient).execute(any());
+
         doReturn(sailRepository.getConnection()).when(mockSPARQLRepository).getConnection();
         doReturn(sailRepository.getHttpClientSessionManager()).when(mockSPARQLRepository).getHttpClientSessionManager();
         doReturn(sailRepository.getValueFactory()).when(mockSPARQLRepository).getValueFactory();
+        doReturn(mockHttpClient).when(mockSPARQLRepository).getHttpClient();
     }
 
     @Test
-    public void testExecuteTupleQuerySelectAll() throws IOException {
+    public void testExecuteTupleQuerySelectAll() throws Exception {
         StringWriter outputWriter = new StringWriter();
         NeptuneSparqlClient client = createNeptuneSparqlClient();
 
@@ -73,7 +90,7 @@ public class NeptuneSparqlClientTest {
     }
 
     @Test
-    public void completeExportShouldExportDefaultGraphViaGSP() throws IOException {
+    public void completeExportShouldExportDefaultGraphViaGSP() throws Exception {
         NeptuneSparqlClient client = createNeptuneSparqlClient();
         RdfTargetConfig targetConfig = getMockTargetConfig(new StringWriter());
 
@@ -81,10 +98,11 @@ public class NeptuneSparqlClientTest {
 
         verify(client, times(1)).executeGSPExport(targetConfig, "default");
         verify(client, never()).executeTupleQuery(any(), any());
+        verifyWriterClosed();
     }
 
     @Test
-    public void completeExportShouldExecuteTupleQueryIfNoGSP() throws IOException {
+    public void completeExportShouldExecuteTupleQueryIfNoGSP() throws Exception {
         NeptuneSparqlClient client = createNeptuneSparqlClient(FeatureToggle.No_GSP);
         RdfTargetConfig targetConfig = getMockTargetConfig(new StringWriter());
 
@@ -92,10 +110,11 @@ public class NeptuneSparqlClientTest {
 
         verify(client, times(1)).executeTupleQuery("SELECT * WHERE { GRAPH ?g { ?s ?p ?o } }", targetConfig);
         verify(client, never()).executeGSPExport(any(), any());
+        verifyWriterClosed();
     }
 
     @Test
-    public void namedGraphExportShouldExportDefaultGraphViaGSP() throws IOException {
+    public void namedGraphExportShouldExportDefaultGraphViaGSP() throws Exception {
         NeptuneSparqlClient client = createNeptuneSparqlClient();
         RdfTargetConfig targetConfig = getMockTargetConfig(new StringWriter());
 
@@ -103,10 +122,11 @@ public class NeptuneSparqlClientTest {
 
         verify(client, times(1)).executeGSPExport(targetConfig, "graph=GraphName");
         verify(client, never()).executeTupleQuery(any(), any());
+        verifyWriterClosed();
     }
 
     @Test
-    public void namedGraphExportShouldExecuteTupleQueryIfNoGSP() throws IOException {
+    public void namedGraphExportShouldExecuteTupleQueryIfNoGSP() throws Exception {
         NeptuneSparqlClient client = createNeptuneSparqlClient(FeatureToggle.No_GSP);
         RdfTargetConfig targetConfig = getMockTargetConfig(new StringWriter());
 
@@ -114,21 +134,31 @@ public class NeptuneSparqlClientTest {
 
         verify(client, times(1)).executeTupleQuery("SELECT * WHERE { GRAPH ?g { ?s ?p ?o } FILTER(?g = <http://example.com>) .}", targetConfig);
         verify(client, never()).executeGSPExport(any(), any());
+        verifyWriterClosed();
     }
 
     private NeptuneSparqlClient createNeptuneSparqlClient(FeatureToggle ... featureToggles) throws IOException {
-        NeptuneSparqlClient client = spy(NeptuneSparqlClient.create(mock(ConnectionConfig.class), new FeatureToggles(Arrays.asList(featureToggles))));
+        ConnectionConfig mockConnectionConfig = mock(ConnectionConfig.class);
+        doReturn(Collections.singletonList("localhost")).when(mockConnectionConfig).endpoints();
+
+        NeptuneSparqlClient client = spy(NeptuneSparqlClient.create(mockConnectionConfig, new FeatureToggles(Arrays.asList(featureToggles))));
 
         doReturn(mockSPARQLRepository).when(client).chooseRepository();
-        doNothing().when(client).executeGSPExport(any(), any());
 
         return client;
     }
 
-    private RdfTargetConfig getMockTargetConfig(Writer outputWriter) throws IOException {
+    private RdfTargetConfig getMockTargetConfig(Writer outputWriter) throws Exception {
         RdfTargetConfig target = spy(new RdfTargetConfig(null, null, null, RdfExportFormat.ntriples));
-        doReturn(new PrintOutputWriter("TestOutputWriter", outputWriter)).when(target).createOutputWriter();
+        writer = spy(new PrintOutputWriter("TestOutputWriter", outputWriter));
+        doReturn(writer).when(target).createOutputWriter();
+
+        verify(writer, never()).close();
 
         return target;
+    }
+
+    private void verifyWriterClosed() throws Exception {
+        verify(writer, atLeastOnce()).close();
     }
 }
