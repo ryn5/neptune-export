@@ -1,5 +1,11 @@
 # Amazon Neptune Export CHANGELOG
 
+## Neptune Export v1.1.6 (Release Date: April 17, 2024):
+
+### Bug Fixes:
+
+- Fix bug in `export-rdf` to Kinesis where Neptune Export may terminate before all data has been written to the stream.
+
 ## Neptune Export v1.1.5 (Release Date: March 18, 2024):
 
 ### New Features and Improvements:
