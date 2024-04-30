@@ -58,7 +58,9 @@ public class GraphSchemaProviderModule {
                 return new GraphSchema();
             }
 
-            return GraphSchema.fromJson(new ObjectMapper().readTree(configJson));
+            GraphSchema r = GraphSchema.fromJson(new ObjectMapper().readTree(configJson));
+            int i = 0;
+            return r;
         }
     }
 }

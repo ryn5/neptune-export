@@ -142,8 +142,8 @@ public class ExportPropertyGraph extends NeptuneExportCommand implements Runnabl
                     configFileResource.writeResourcePathAsMessage(target);
                     getLastEventIdStrategy.writeLastEventIdResourcePathAsMessage(target);
 
-                    System.err.println();
-                    System.err.println(stats.formatStats(graphSchema));
+                    System.err.println("------------------------------");
+                    System.out.println(stats.formatStats(graphSchema));
 
                     directories.writeRootDirectoryPathAsReturnValue(target);
                     onExportComplete(directories, stats, cluster, graphSchema);

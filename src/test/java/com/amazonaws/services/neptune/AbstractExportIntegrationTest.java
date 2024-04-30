@@ -57,7 +57,7 @@ public abstract class AbstractExportIntegrationTest {
 
     @BeforeClass
     public static void setupClass(){
-        neptuneEndpoint = System.getenv("NEPTUNE_ENDPOINT");
+        neptuneEndpoint = "export-integration-tests.cluster-cjiepzx2kerx.us-west-2.neptune.amazonaws.com";
         assertNotNull("endpoint must be provided through \"NEPTUNE_ENDPOINT\" environment variable", neptuneEndpoint);
 
         fillDbWithTestData(neptuneEndpoint);

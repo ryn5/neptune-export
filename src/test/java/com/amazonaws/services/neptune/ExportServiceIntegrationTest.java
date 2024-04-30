@@ -26,6 +26,29 @@ public class ExportServiceIntegrationTest extends AbstractExportIntegrationTest{
     public final ExpectedSystemExit exit = ExpectedSystemExit.none();
 
     @Test
+    public void newTest() {
+        exit.expectSystemExitWithStatus(0);
+        exit.checkAssertionAfterwards(new EquivalentResultsAssertion("src/test/resources/IntegrationTest/testExportPgToCsv"));
+
+        final String[] command = {
+                "nesvc",
+                "--root-path", "src/test/java/com/amazonaws/services/neptune/newTest",
+                "--json", "{"+
+                "\"command\": \"export-pg\",\n" +
+                "    \"params\": {\n" +
+                "       \"endpoint\": \""+neptuneEndpoint+"\",\n" +
+                "       \"filter\": {\n" +
+                "           \"nodes\": [{\"label\": \"country\"}],\n" +
+                "           \"edges\": [{\"label\": \"route\", \"properties\": [\"dist\"], \"tokensOnly\": \"true\" }]\n" +
+//                "           \"edges\": [{\"label\": \"route\"}]\n" +
+                "       }\n" +
+                "   }\n" +
+                "}"
+        };
+        final NeptuneExportRunner runner = new NeptuneExportRunner(command);
+        runner.run();
+    }
+    @Test
     public void testExportPgToCsv() {
         exit.expectSystemExitWithStatus(0);
         exit.checkAssertionAfterwards(new EquivalentResultsAssertion("src/test/resources/IntegrationTest/testExportPgToCsv"));

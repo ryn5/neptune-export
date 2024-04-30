@@ -42,6 +42,7 @@ public class GraphElementSchemas {
             graphElementSchemas.addLabelSchema(new LabelSchema(label), filenames);
 
             if (node.has("properties")) {
+//            if (node.has("properties") && node.has("tokensOnly") && node.path("tokensOnly").textValue().equals("false")) {
                 ArrayNode propertiesArray = (ArrayNode) node.path("properties");
 
                 for (JsonNode propertyNode : propertiesArray) {
@@ -69,11 +70,19 @@ public class GraphElementSchemas {
                         graphElementSchemas.getSchemaFor(label).put(
                                 key,
                                 new PropertySchema(key, isNullable, dataType, isMultiValue, allTypes));
+//                    } else if (propertyNode.textValue().equals("dist")) {
+//                        int i = 0;
                     } else {
                         String property = propertyNode.textValue();
+                        if (property.equals("dist")) {
+                            int i = 0;
+                            return graphElementSchemas;
+                        }
+
                         graphElementSchemas.getSchemaFor(label).put(
                                 property,
                                 new PropertySchema(property, false, DataType.None, false, EnumSet.noneOf(DataType.class)));
+                        int i  = 0;
                     }
                 }
             }

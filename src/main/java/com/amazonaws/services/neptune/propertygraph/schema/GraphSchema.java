@@ -34,8 +34,9 @@ public class GraphSchema implements Jsonizable<Boolean> {
                 graphElementsSchemas.put(graphElementType, GraphElementSchemas.fromJson((ArrayNode) node));
             }
         }
+        GraphSchema gs = new GraphSchema(graphElementsSchemas);
 
-        return new GraphSchema(graphElementsSchemas);
+        return gs;
     }
 
     private final Map<GraphElementType, GraphElementSchemas> graphElementsSchemas;

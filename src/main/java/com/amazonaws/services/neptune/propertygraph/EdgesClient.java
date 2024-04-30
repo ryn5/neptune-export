@@ -42,7 +42,7 @@ public class EdgesClient implements GraphClient<PGResult> {
     private static final Logger logger = LoggerFactory.getLogger(EdgesClient.class);
 
     private final GraphTraversalSource g;
-    private final boolean tokensOnly;
+    private boolean tokensOnly;
     private final ExportStats stats;
     private final FeatureToggles featureToggles;
 
@@ -84,7 +84,7 @@ public class EdgesClient implements GraphClient<PGResult> {
                                LabelsFilter labelsFilter,
                                GremlinFilters gremlinFilters,
                                GraphElementSchemas graphElementSchemas) {
-
+//        tokensOnly = true;
         GraphTraversal<Edge, Edge> t1 = tokensOnly ?
                 g.withSideEffect("x", new HashMap<String, Object>()).E() :
                 g.E();
